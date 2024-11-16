@@ -2,7 +2,6 @@ import smtplib
 from uuid import uuid4
 
 from flask import (
-    Blueprint,
     abort,
     g,
     request,
@@ -19,7 +18,7 @@ from scoreboard.database import (
     remove_user_role,
     reset_user_password,
 )
-from flask_restx import Api, Resource
+from flask_restx import Namespace, Resource
 from scoreboard.enums import ClearanceEnum
 from scoreboard.model.user import User
 from scoreboard.util import send_email
@@ -28,36 +27,35 @@ from scoreboard.api_models.common import error_response, success_response
 from scoreboard.parsers.admin_parsers import insert_user_parser, update_user_parser
 from scoreboard.parsers.common_parsers import id_parser
 
-bp = Blueprint("admin", __name__, url_prefix="/admin")
-api = Api(bp)
-api.models[user_model.name] = user_model
-api.models[user_type_model.name] = user_type_model
-api.models[error_response.name] = error_response
-api.models[success_response.name] = success_response
+ns = Namespace("admin", description="Admin endpoints. Allows user management for admins.", default="Admin", default_label="Admin")
+ns.models[user_model.name] = user_model
+ns.models[user_type_model.name] = user_type_model
+ns.models[error_response.name] = error_response
+ns.models[success_response.name] = success_response
 
 
-@api.route("/users")
+@ns.route("/users")
 class Users(Resource):
     method_decorators = [login_required, admin_required]
 
-    @api.marshal_with(user_model)
-    @api.response(401, "Unauthorized")
-    @api.response(403, "Forbidden")
+    @ns.marshal_with(user_model)
+    @ns.response(401, "Unauthorized")
+    @ns.response(403, "Forbidden")
     def get(self):
         users = get_users()
         return users
 
 
-@api.route("/user")
+@ns.route("/user")
 class User(Resource):
     method_decorators = [login_required, admin_required]
 
-    @api.expect(id_parser)
-    @api.response(400, "Validation error")
-    @api.response(401, "Unauthorized")
-    @api.response(403, "Forbidden")
-    @api.response(404, "Not found")
-    @api.marshal_with(user_model)
+    @ns.expect(id_parser)
+    @ns.response(400, "Validation error")
+    @ns.response(401, "Unauthorized")
+    @ns.response(403, "Forbidden")
+    @ns.response(404, "Not found")
+    @ns.marshal_with(user_model)
     def get(self):
         args = id_parser.parse_args(strict=True)
         id = args.id
@@ -67,11 +65,11 @@ class User(Resource):
             abort(404, "Användare hittades ej!")
         return user
 
-    @api.expect(insert_user_parser)
-    @api.response(400, "Validation error")
-    @api.response(401, "Unauthorized")
-    @api.response(403, "Forbidden")
-    @api.marshal_with(user_model)
+    @ns.expect(insert_user_parser)
+    @ns.response(400, "Validation error")
+    @ns.response(401, "Unauthorized")
+    @ns.response(403, "Forbidden")
+    @ns.marshal_with(user_model)
     def post(self):
         args = insert_user_parser.parse_args(strict=True)
 
@@ -83,12 +81,12 @@ class User(Resource):
             abort(400, "Något gick fel!")
         return user
 
-    @api.expect(update_user_parser)
-    @api.response(400, "Validation error")
-    @api.response(401, "Unauthorized")
-    @api.response(403, "Forbidden")
-    @api.response(404, "Not found")
-    @api.marshal_with(user_model)
+    @ns.expect(update_user_parser)
+    @ns.response(400, "Validation error")
+    @ns.response(401, "Unauthorized")
+    @ns.response(403, "Forbidden")
+    @ns.response(404, "Not found")
+    @ns.marshal_with(user_model)
     def put(self):
         args = update_user_parser.parse_args(strict=True)
 
@@ -105,12 +103,12 @@ class User(Resource):
 
         return user
 
-    @api.expect(id_parser)
-    @api.response(204, "Success")
-    @api.response(400, "Validation error")
-    @api.response(401, "Unauthorized")
-    @api.response(403, "Forbidden")
-    @api.response(404, "Not found")
+    @ns.expect(id_parser)
+    @ns.response(204, "Success")
+    @ns.response(400, "Validation error")
+    @ns.response(401, "Unauthorized")
+    @ns.response(403, "Forbidden")
+    @ns.response(404, "Not found")
     def delete(self):
         args = id_parser.parse_args(strict=True)
         id = args.id
@@ -124,17 +122,17 @@ class User(Resource):
         return "", 204
 
 
-@api.route("/reset_password")
+@ns.route("/reset_password")
 class ResetPassword(Resource):
     method_decorators = [login_required, admin_required]
 
-    @api.expect(id_parser)
-    @api.response(400, "Validation error")
-    @api.response(401, "Unauthorized")
-    @api.response(403, "Forbidden")
-    @api.response(404, "Not found")
-    @api.response(500, "Internal error")
-    @api.marshal_with(user_model)
+    @ns.expect(id_parser)
+    @ns.response(400, "Validation error")
+    @ns.response(401, "Unauthorized")
+    @ns.response(403, "Forbidden")
+    @ns.response(404, "Not found")
+    @ns.response(500, "Internal error")
+    @ns.marshal_with(user_model)
     def post(self):
         args = id_parser.parse_args(strict=True)
         id = args.id
@@ -173,25 +171,25 @@ Ovanstående lösenord är temporärt och vid första inloggning kommer du behö
         return user
 
 
-@api.route("/<int:id>/admin")
+@ns.route("/<int:id>/admin")
 class Admin(Resource):
     method_decorators = [login_required, admin_required]
 
-    @api.response(401, "Unauthorized")
-    @api.response(403, "Forbidden")
-    @api.response(404, "Not found")
-    @api.marshal_with(user_model)
+    @ns.response(401, "Unauthorized")
+    @ns.response(403, "Forbidden")
+    @ns.response(404, "Not found")
+    @ns.marshal_with(user_model)
     def put(self, id: int):
         validate_user_id(id)
         if not add_user_role(id, ClearanceEnum.Admin):
             abort(404, "Användare hittades inte!")
         return get_user(id)
 
-    @api.response(400, "Validation error")
-    @api.response(401, "Unauthorized")
-    @api.response(403, "Forbidden")
-    @api.response(404, "Not found")
-    @api.marshal_with(user_model)
+    @ns.response(400, "Validation error")
+    @ns.response(401, "Unauthorized")
+    @ns.response(403, "Forbidden")
+    @ns.response(404, "Not found")
+    @ns.marshal_with(user_model)
     def delete(self, id: int):
         validate_user_id(id)
         if id == g.user.id:
@@ -201,25 +199,25 @@ class Admin(Resource):
         return get_user(id)
 
 
-@api.route("/<int:id>/wannabe")
+@ns.route("/<int:id>/wannabe")
 class Wannabe(Resource):
     method_decorators = [login_required, admin_required]
 
-    @api.response(401, "Unauthorized")
-    @api.response(403, "Forbidden")
-    @api.response(404, "Not found")
-    @api.marshal_with(user_model)
+    @ns.response(401, "Unauthorized")
+    @ns.response(403, "Forbidden")
+    @ns.response(404, "Not found")
+    @ns.marshal_with(user_model)
     def put(self, id: int):
         validate_user_id(id)
         if not add_user_role(id, ClearanceEnum.Wannabe):
             abort(404, "Användare hittades inte!")
         return get_user(id)
 
-    @api.response(400, "Validation error")
-    @api.response(401, "Unauthorized")
-    @api.response(403, "Forbidden")
-    @api.response(404, "Not found")
-    @api.marshal_with(user_model)
+    @ns.response(400, "Validation error")
+    @ns.response(401, "Unauthorized")
+    @ns.response(403, "Forbidden")
+    @ns.response(404, "Not found")
+    @ns.marshal_with(user_model)
     def delete(self, id: int):
         validate_user_id(id)
         if not remove_user_role(id, ClearanceEnum.Wannabe):

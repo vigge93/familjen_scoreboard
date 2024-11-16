@@ -32,4 +32,4 @@ COPY . .
 RUN /env/bin/pip install -e .
 
 # This must be comma-separated
-CMD [ "gunicorn", "familjen_scoreboard:create_app()", "--bind=0.0.0.0:8000" ]
+CMD [ "gunicorn", "scoreboard:create_app()", "--bind=0.0.0.0:8000" ]

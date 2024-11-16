@@ -1,8 +1,8 @@
 import logging
 import os
 from logging.config import dictConfig
-
-from flask import Flask
+from flask_restx import Api
+from flask import Flask, session, g
 from flask_sqlalchemy import SQLAlchemy
 from werkzeug.exceptions import HTTPException
 
@@ -10,9 +10,9 @@ from scoreboard.model.model import BaseModel
 
 db = SQLAlchemy(engine_options={"pool_pre_ping": True}, model_class=BaseModel)
 
-
 def create_app() -> Flask:
     app = Flask(__name__, instance_relative_config=True)
+    api = Api(app,title="Familjen scoreboard API", description="")
 
     app.config.from_mapping(
         SECRET_KEY=os.getenv("SECRET_KEY"),
@@ -38,23 +38,36 @@ def create_app() -> Flask:
 
     init_data.init_db(app, db)
 
+    
     from . import auth
 
-    app.register_blueprint(auth.bp)
+    api.add_namespace(auth.ns)
 
     from . import main
 
-    app.register_blueprint(main.bp)
+    api.add_namespace(main.ns)
 
     from . import admin
 
-    app.register_blueprint(admin.bp)
+    api.add_namespace(admin.ns)
 
     app.register_error_handler(HTTPException, error_page)
 
     @app.route("/healthz")
     def healthz() -> dict[str, int]:
         return {"status": 1}
+    
+    @app.before_request
+    def load_logged_in_user():
+        from scoreboard.database import get_user
+        user_id = session.get("user_id")
+        if user_id is None:
+            g.user = None
+        else:
+            g.user = get_user(user_id)
+            if g.user is None:
+                return
+
 
     if (
         not app.config["TESTING"] and not app.config["SCOREBOARD_DEVELOPMENT"]

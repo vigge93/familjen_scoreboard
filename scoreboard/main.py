@@ -1,10 +1,9 @@
 from flask import (
-    Blueprint,
     abort,
     g,
 )
 
-from flask_restx import Api, Resource
+from flask_restx import Namespace, Resource
 
 from scoreboard import database
 from scoreboard.auth import login_required
@@ -16,32 +15,31 @@ from scoreboard.parsers.common_parsers import id_parser
 from scoreboard.parsers.score_parsers import score_parser
 from scoreboard.model.scores import ScoreLog
 
-bp = Blueprint("main", __name__, url_prefix="/")
-api = Api(bp)
-api.models[score_list_model.name] = score_list_model
-api.models[score_model.name] = score_model
-api.models[error_response.name] = error_response
-api.models[success_response.name] = success_response
-api.models[public_user_model.name] = public_user_model
+ns = Namespace("scoreboard", path="/", title="Scoreboard", description="Main endpoints for interacting with the scoreboard.", default="Scoreboard", default_label="Scoreboard")
+ns.models[score_list_model.name] = score_list_model
+ns.models[score_model.name] = score_model
+ns.models[error_response.name] = error_response
+ns.models[success_response.name] = success_response
+ns.models[public_user_model.name] = public_user_model
 
 
-@api.route("/scores")
+@ns.route("/scores")
 class Scores(Resource):
 
-    @api.marshal_with(score_list_model)
+    @ns.marshal_with(score_list_model)
     def get(self):
         return database.get_scores_aggregated()
 
 
-@api.route("/score")
+@ns.route("/score")
 class Score(Resource):
     method_decorators = [login_required]
 
-    @api.expect(id_parser)
-    @api.response(400, "Validation error")
-    @api.response(401, "Unauthorized")
-    @api.response(404, "Not found")
-    @api.marshal_with(score_model)
+    @ns.expect(id_parser)
+    @ns.response(400, "Validation error")
+    @ns.response(401, "Unauthorized")
+    @ns.response(404, "Not found")
+    @ns.marshal_with(score_model)
     def get(self):
         args = id_parser.parse_args(strict=True)
         id = args.id
@@ -51,12 +49,12 @@ class Score(Resource):
             abort(404, "Poäng hittades ej!")
         return score
 
-    @api.expect(score_parser)
-    @api.response(400, "Validation error")
-    @api.response(401, "Unauthorized")
-    @api.response(403, "Forbidden")
-    @api.response(404, "Not found")
-    @api.marshal_with(score_model)
+    @ns.expect(score_parser)
+    @ns.response(400, "Validation error")
+    @ns.response(401, "Unauthorized")
+    @ns.response(403, "Forbidden")
+    @ns.response(404, "Not found")
+    @ns.marshal_with(score_model)
     def post(self):
         if (g.user.userTypeId & ClearanceEnum.Wannabe) != 0:
             score = ScoreLog(
@@ -92,12 +90,12 @@ class Score(Resource):
             abort(400, "Något gick fel!")
         return score_log
 
-    @api.expect(id_parser)
-    @api.response(204, "Success")
-    @api.response(400, "Validation error")
-    @api.response(401, "Unauthorized")
-    @api.response(403, "Forbidden")
-    @api.response(404, "Not found")
+    @ns.expect(id_parser)
+    @ns.response(204, "Success")
+    @ns.response(400, "Validation error")
+    @ns.response(401, "Unauthorized")
+    @ns.response(403, "Forbidden")
+    @ns.response(404, "Not found")
     def delete(self):
         if (g.user.userTypeId & ClearanceEnum.Wannabe) != 0:
             score = ScoreLog(
@@ -128,11 +126,11 @@ class Score(Resource):
         return "", 204
 
 
-@api.route("/<int:id>/scores")
+@ns.route("/<int:id>/scores")
 class UserScore(Resource):
     method_decorators = [login_required]
 
-    @api.marshal_with(score_model)
-    @api.response(401, "Unauthorized")
+    @ns.marshal_with(score_model)
+    @ns.response(401, "Unauthorized")
     def get(self, id: int):
         return database.get_user_scores(id)

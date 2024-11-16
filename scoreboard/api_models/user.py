@@ -15,7 +15,7 @@ user_model = Model(
 )
 
 public_user_model = Model(
-    "User",
+    "PublicUser",
     {
         "id": fields.Integer,
         "name": fields.String,

@@ -16,19 +16,18 @@ from scoreboard.database import (
     update_user_last_login,
     update_user_password,
 )
-from flask_restx import Api, Resource
+from flask_restx import Resource, Namespace
 from scoreboard.enums import ClearanceEnum
 from scoreboard.model.user import User
 from scoreboard.api_models.user import user_model, user_type_model
 from scoreboard.api_models.common import error_response, success_response
 from scoreboard.parsers.auth_parsers import login_parser, change_password_parser
 
-bp = Blueprint("auth", __name__, url_prefix="/auth")
-api = Api(bp)
-api.models[user_model.name] = user_model
-api.models[user_type_model.name] = user_type_model
-api.models[error_response.name] = error_response
-api.models[success_response.name] = success_response
+ns = Namespace("auth", description="Authentication endpoints. Handles login, logout, and change of password.", default="Auth", default_label="Authentication")
+ns.models[user_model.name] = user_model
+ns.models[user_type_model.name] = user_type_model
+ns.models[error_response.name] = error_response
+ns.models[success_response.name] = success_response
 
 
 def login_required(view):
@@ -37,7 +36,7 @@ def login_required(view):
         if g.user is None:
             return abort(401, "Du är ej inloggad!")
         if g.user.needs_password_change and request.path != url_for(
-            "auth.change_password"
+            "auth_change_password"
         ):
             abort(403, "Du måste byta lösenord!")
 
@@ -57,12 +56,12 @@ def admin_required(view):
     return wrapped_view
 
 
-@api.route("/login")
+@ns.route("/login")
 class Login(Resource):
 
-    @api.response(400, "Validation error")
-    @api.marshal_with(user_model)
-    @api.expect(login_parser)
+    @ns.response(400, "Validation error")
+    @ns.marshal_with(user_model)
+    @ns.expect(login_parser)
     def post(self):
         if g.user is not None:
             return g.user
@@ -87,15 +86,15 @@ class Login(Resource):
         return user
 
 
-@api.route("/change_password")
+@ns.route("/change_password")
 class ChangePassword(Resource):
     method_decorators = [login_required]
 
-    @api.expect(change_password_parser)
-    @api.response(204, "Success")
-    @api.response(400, "Validation error")
-    @api.response(401, "Unauthorized")
-    @api.response(403, "Forbidden")
+    @ns.expect(change_password_parser)
+    @ns.response(204, "Success")
+    @ns.response(400, "Validation error")
+    @ns.response(401, "Unauthorized")
+    @ns.response(403, "Forbidden")
     def post(self):
         args = change_password_parser.parse_args(strict=True)
 
@@ -120,22 +119,11 @@ class ChangePassword(Resource):
         return "", 204
 
 
-@api.route("/logout")
+@ns.route("/logout")
 class Logout(Resource):
 
-    @api.response(204, "Success")
+    @ns.response(204, "Success")
     def get(self):
         session.clear()
         g.user = None
         return "", 204
-
-
-@bp.before_app_request
-def load_logged_in_user():
-    user_id = session.get("user_id")
-    if user_id is None:
-        g.user = None
-    else:
-        g.user = get_user(user_id)
-        if g.user is None:
-            return
