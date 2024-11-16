@@ -1,0 +1,6 @@
+*.pyc
+venv/
+*.db
+instance/*
+*.egg-info
+!instance/config.py.template

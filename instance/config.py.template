@@ -1,0 +1,20 @@
+
+# Random key for encrypting session cookie
+SECRET_KEY=b""
+
+# Database URI, see https://docs.sqlalchemy.org/en/20/core/engines.html#database-urls
+SQLALCHEMY_DATABASE_URI="sqlite:///:memory:"
+
+# Disable email features
+SCOREBOARD_DEVELOPMENT=True
+
+# Default login credentials
+SCOREBOARD_ADMIN_USER_EMAIL=
+SCOREBOARD_ADMIN_USER_NAME=
+SCOREBOARD_ADMIN_USER_PASSWORD=
+
+# Not necessary if SCOREBOARD_DEVELOPMENT=True
+SCOREBOARD_EMAIL_SENDER=
+SCOREBOARD_SMTP_HOST=
+SCOREBOARD_SMTP_USERNAME=
+SCOREBOARD_SMTP_PASSWORD=
